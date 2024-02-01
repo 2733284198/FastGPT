@@ -65,8 +65,8 @@ Table of Contents</button><nav id=toc-mobile><ul class=dropdown-menu><li><ul><li
   &#34;list[1][0].test&#34;: 22,
   &#34;psw&#34;: &#34;xxx&#34;
 }</code>
-  </pre></div><p>你可以使用<code>json</code>里对应的<code>key</code>来获取值。</p><h3 id=格式化输出>格式化输出 <a href=#%e6%a0%bc%e5%bc%8f%e5%8c%96%e8%be%93%e5%87%ba class=anchor aria-hidden=true><i class="material-icons align-middle">link</i></a></h3><p>FastGPT v4.6.8 后，加入了出参格式化功能，主要以<code>json</code>格式化成<code>字符串</code>为主。如果你的输出类型选择了<code>字符串</code>，则会将<code>HTTP</code>对应<code>key</code>的值，转成<code>json</code>字符串进行输出。因此，未来你可以直接从<code>HTTP</code>接口输出内容至<code>文本加工</code>中，然后拼接适当的提示词，最终输入给<code>AI对话</code>。</p><h2 id=post-示例>POST 示例 <a href=#post-%e7%a4%ba%e4%be%8b class=anchor aria-hidden=true><i class="material-icons align-middle">link</i></a></h2><p><strong>自定义入参</strong></p><ul><li>user.name (string)</li><li>user.age (number)</li><li>type (string)</li></ul><p><strong>自定义出参</strong></p><ul><li>message (string)</li><li>data.name (string)</li><li>data.age (number)</li></ul><p>那么，这个模块发出的请求则是:</p><nav><div class="nav nav-tabs" id=nav-tab role=tablist><a class="nav-link active" id=fbaecdTab data-bs-toggle=tab data-bs-target=#fbaecd type=button role=tab aria-controls=fbaecd aria-selected=true>POST 请求示例</a>
-<a class=nav-link id=abfdecTab data-bs-toggle=tab data-bs-target=#abfdec type=button role=tab aria-controls=abfdec aria-selected=true>POST响应</a></div></nav><div class=tab-content id=nav-tab-content><div class="tab-pane fade show active" id=fbaecd role=tabpanel aria-labelledby=nav-1><div class=prism-codeblock><pre id=9ef46b0 class=language-bash>
+  </pre></div><p>你可以使用<code>json</code>里对应的<code>key</code>来获取值。</p><h3 id=格式化输出>格式化输出 <a href=#%e6%a0%bc%e5%bc%8f%e5%8c%96%e8%be%93%e5%87%ba class=anchor aria-hidden=true><i class="material-icons align-middle">link</i></a></h3><p>FastGPT v4.6.8 后，加入了出参格式化功能，主要以<code>json</code>格式化成<code>字符串</code>为主。如果你的输出类型选择了<code>字符串</code>，则会将<code>HTTP</code>对应<code>key</code>的值，转成<code>json</code>字符串进行输出。因此，未来你可以直接从<code>HTTP</code>接口输出内容至<code>文本加工</code>中，然后拼接适当的提示词，最终输入给<code>AI对话</code>。</p><h2 id=post-示例>POST 示例 <a href=#post-%e7%a4%ba%e4%be%8b class=anchor aria-hidden=true><i class="material-icons align-middle">link</i></a></h2><p><strong>自定义入参</strong></p><ul><li>user.name (string)</li><li>user.age (number)</li><li>type (string)</li></ul><p><strong>自定义出参</strong></p><ul><li>message (string)</li><li>data.name (string)</li><li>data.age (number)</li></ul><p>那么，这个模块发出的请求则是:</p><nav><div class="nav nav-tabs" id=nav-tab role=tablist><a class="nav-link active" id=bdaecfTab data-bs-toggle=tab data-bs-target=#bdaecf type=button role=tab aria-controls=bdaecf aria-selected=true>POST 请求示例</a>
+<a class=nav-link id=fbdeacTab data-bs-toggle=tab data-bs-target=#fbdeac type=button role=tab aria-controls=fbdeac aria-selected=true>POST响应</a></div></nav><div class=tab-content id=nav-tab-content><div class="tab-pane fade show active" id=bdaecf role=tabpanel aria-labelledby=nav-1><div class=prism-codeblock><pre id=9ef46b0 class=language-bash>
   <code>curl --location --request POST &#39;http://xxxx.com&#39; \
 --header &#39;Content-Type: application/json&#39; \
 --data-raw &#39;{
@@ -84,7 +84,7 @@ Table of Contents</button><nav id=toc-mobile><ul class=dropdown-menu><li><ul><li
     &#34;type&#34;: &#34;&#34;
   }
 }&#39;</code>
-  </pre></div></div><div class="tab-pane fade" id=abfdec role=tabpanel aria-labelledby=nav-1><div class=prism-codeblock><pre id=7ea966c class=language-json>
+  </pre></div></div><div class="tab-pane fade" id=fbdeac role=tabpanel aria-labelledby=nav-1><div class=prism-codeblock><pre id=7ea966c class=language-json>
   <code>{
   &#34;message&#34;: &#34;message&#34;,
   &#34;data&#34;: {
@@ -92,10 +92,10 @@ Table of Contents</button><nav id=toc-mobile><ul class=dropdown-menu><li><ul><li
     &#34;age&#34;: 10
   }
 }</code>
-  </pre></div></div></div><h2 id=get-示例>GET 示例 <a href=#get-%e7%a4%ba%e4%be%8b class=anchor aria-hidden=true><i class="material-icons align-middle">link</i></a></h2><p>GET 中，不推荐使用嵌套参数，否则会出现奇怪的问题。此外，GET 请求中，FastGPT 会将参数扁平化，不会将自定义参单独抽到 data 中，同时全局变量也会扁平化，因此需要注意字段 key 是否冲突。</p><p><strong>自定义入参</strong></p><ul><li>name (string)</li><li>age (number)</li><li>type (string)</li></ul><p><strong>自定义出参</strong></p><ul><li>message (string)</li><li>name (string)</li><li>age (number)</li></ul><p>那么，这个模块发出的请求则是:</p><nav><div class="nav nav-tabs" id=nav-tab role=tablist><a class="nav-link active" id=bfcedaTab data-bs-toggle=tab data-bs-target=#bfceda type=button role=tab aria-controls=bfceda aria-selected=true>GET 请求示例</a>
-<a class=nav-link id=ecdbafTab data-bs-toggle=tab data-bs-target=#ecdbaf type=button role=tab aria-controls=ecdbaf aria-selected=true>GET 响应</a></div></nav><div class=tab-content id=nav-tab-content><div class="tab-pane fade show active" id=bfceda role=tabpanel aria-labelledby=nav-1><div class=prism-codeblock><pre id=7090d6b class=language-bash>
+  </pre></div></div></div><h2 id=get-示例>GET 示例 <a href=#get-%e7%a4%ba%e4%be%8b class=anchor aria-hidden=true><i class="material-icons align-middle">link</i></a></h2><p>GET 中，不推荐使用嵌套参数，否则会出现奇怪的问题。此外，GET 请求中，FastGPT 会将参数扁平化，不会将自定义参单独抽到 data 中，同时全局变量也会扁平化，因此需要注意字段 key 是否冲突。</p><p><strong>自定义入参</strong></p><ul><li>name (string)</li><li>age (number)</li><li>type (string)</li></ul><p><strong>自定义出参</strong></p><ul><li>message (string)</li><li>name (string)</li><li>age (number)</li></ul><p>那么，这个模块发出的请求则是:</p><nav><div class="nav nav-tabs" id=nav-tab role=tablist><a class="nav-link active" id=abfdecTab data-bs-toggle=tab data-bs-target=#abfdec type=button role=tab aria-controls=abfdec aria-selected=true>GET 请求示例</a>
+<a class=nav-link id=facbedTab data-bs-toggle=tab data-bs-target=#facbed type=button role=tab aria-controls=facbed aria-selected=true>GET 响应</a></div></nav><div class=tab-content id=nav-tab-content><div class="tab-pane fade show active" id=abfdec role=tabpanel aria-labelledby=nav-1><div class=prism-codeblock><pre id=7090d6b class=language-bash>
   <code>curl --location --request GET &#39;http://xxx.com/test?name&amp;age&amp;type&amp;appId=65782f7ffae5f7854ed4498b&amp;chatId=xxxx&amp;responseChatItemId=xxxx&amp;cTime=2023-12-18 13:45:46&#39;</code>
-  </pre></div></div><div class="tab-pane fade" id=ecdbaf role=tabpanel aria-labelledby=nav-1><div class=prism-codeblock><pre id=7ea966c class=language-json>
+  </pre></div></div><div class="tab-pane fade" id=facbed role=tabpanel aria-labelledby=nav-1><div class=prism-codeblock><pre id=7ea966c class=language-json>
   <code>{
   &#34;message&#34;: &#34;message&#34;,
   &#34;data&#34;: {
