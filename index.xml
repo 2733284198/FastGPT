@@ -31,19 +31,26 @@ curl https://doc.fastgpt.in/docs/intro/ 如何使用 link1. 新建知识库，�
 多选择器使用 link在开头的演示中，我们对 FastGPT 文档是使用了多选择器的方式来选择，通过逗号隔开了两个选择器。
 我们希望选中上图两个标签中的内容，此时就需要两组选择器。一组是：.docs-content .mb-0.d-flex，含义是 docs-content 类下同时包含 mb-0和d-flex 两个类的子元素；
 另一组是.docs-content div[data-prismjs-copy]，含义是docs-content 类下包含data-prismjs-copy属性的div元素。
-把两组选择器用逗号隔开即可：.docs-content .mb-0.d-flex, .docs-content div[data-prismjs-copy]</description></item><item><title>知识库搜索参数</title><link>/docs/course/data_search/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/course/data_search/</guid><description>在知识库搜索的方式上，FastGPT提供了三种方式，分别为“语义检索”“增强语义检索”“混合检索”。
-搜索模式 link语义检索 link语义检索是通过向量距离，计算用户问题与知识库内容的距离，从而得出“相似度”，当然这并不是语文上的相似度，而是数学上的。
+把两组选择器用逗号隔开即可：.docs-content .mb-0.d-flex, .docs-content div[data-prismjs-copy]</description></item><item><title>知识库搜索介绍</title><link>/docs/course/data_search/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/course/data_search/</guid><description>理解向量 linkFastGPT 采用了 RAG 中的 Embedding 方案构建知识库，要使用好 FastGPT 需要简单的理解Embedding向量是如何工作的及其特点。
+人类的文字、图片、视频等媒介是无法直接被计算机理解的，要想让计算机理解两段文字是否有相似性、相关性，通常需要将它们转成计算机可以理解的语言，向量是其中的一种方式。
+向量可以简单理解为一个数字数组，两个向量之间可以通过数学公式得出一个距离，距离越小代表两个向量的相似度越大。从而映射到文字、图片、视频等媒介上，可以用来判断两个媒介之间的相似度。向量搜索便是利用了这个原理。
+而由于文字是有多种类型，并且拥有成千上万种组合方式，因此在转成向量进行相似度匹配时，很难保障其精确性。在向量方案构建的知识库中，通常使用topk召回的方式，也就是查找前k个最相似的内容，丢给大模型去做更进一步的语义判断、逻辑推理和归纳总结，从而实现知识库问答。因此，在知识库问答中，向量搜索的环节是最为重要的。
+影响向量搜索精度的因素非常多，主要包括：向量模型的质量、数据的质量（长度，完整性，多样性）、检索器的精度（速度与精度之间的取舍）。与数据质量对应的就是检索词的质量。
+检索器的精度比较容易解决，向量模型的训练略复杂，因此数据和检索词质量优化成了一个重要的环节。
+提高向量搜索精度的方法 link 更好分词分段：当一段话的结构和语义是完整的，并且是单一的，精度也会提高。因此，许多系统都会优化分词器，尽可能的保障每组数据的完整性。 精简index的内容，减少向量内容的长度：当index的内容更少，更准确时，检索精度自然会提高。但与此同时，会牺牲一定的检索范围，适合答案较为严格的场景。 丰富index的数量，可以为同一个chunk内容增加多组index。 优化检索词：在实际使用过程中，用户的问题通常是模糊的或是缺失的，并不一定是完整清晰的问题。因此优化用户的问题（检索词）很大程度上也可以提高精度。 微调向量模型：由于市面上直接使用的向量模型都是通用型模型，在特定领域的检索精度并不高，因此微调向量模型可以很大程度上提高专业领域的检索效果。 FastGPT 构建知识库方案 link数据存储结构 link在 FastGPT 中，整个知识库由库、集合和数据 3 部分组成。集合可以简单理解为一个文件。一个库中可以包含多个集合，一个集合中可以包含多组数据。最小的搜索单位是库，也就是说，知识库搜索时，是对整个库进行搜索，而集合仅是为了对数据进行分类管理，与搜索效果无关。（起码目前还是）
+向量存储结构 linkFastGPT 采用了PostgresSQL的PG Vector插件作为向量检索器，索引为HNSW。且PostgresSQL仅用于向量检索（该引擎可以替换成其它数据库），MongoDB用于其他数据的存取。
+在MongoDB的dataset.datas表中，会存储向量原数据的信息，同时有一个indexes字段，会记录其对应的向量ID，这是一个数组，也就是说，一组向量可以对应多组数据。
+在PostgresSQL的表中，设置一个vector字段用于存储向量。在检索时，会先召回向量，再根据向量的ID，去MongoDB中寻找原数据内容，如果对应了同一组原数据，则进行合并，向量得分取最高得分。
+多向量的目的和使用方式 link在一组向量中，内容的长度和语义的丰富度通常是矛盾的，无法兼得。因此，FastGPT 采用了多向量映射的方式，将一组数据映射到多组向量中，从而保障数据的完整性和语义的丰富度。
+你可以为一组较长的文本，添加多组向量，从而在检索时，只要其中一组向量被检索到，该数据也将被召回。
+检索方案 link 通过问题补全实现指代消除和问题扩展，从而增加连续对话的检索能力以及语义丰富度。 通过Concat query来增加Rerank连续对话的时，排序的准确性。 通过RRF合并方式，综合多个渠道的检索效果。 通过Rerank来二次排序，提高精度。 搜索参数 link 搜索模式 link语义检索 link语义检索是通过向量距离，计算用户问题与知识库内容的距离，从而得出“相似度”，当然这并不是语文上的相似度，而是数学上的。
 优点：
 相近语义理解 跨多语言理解（例如输入中文问题匹配英文知识点） 多模态理解（文本，图片，音视频等） 缺点：
 依赖模型训练效果 精度不稳定 受关键词和句子完整度影响 全文检索 link采用传统的全文检索方式。适合查找关键的主谓语等。
 混合检索 link同时使用向量检索和全文检索，并通过 RRF 公式进行两个搜索结果合并，一般情况下搜索结果会更加丰富准确。
 由于混合检索后的查找范围很大，并且无法直接进行相似度过滤，通常需要进行利用重排模型进行一次结果重新排序，并利用重排的得分进行过滤。
 结果重排 link利用ReRank模型对搜索结果进行重排，绝大多数情况下，可以有效提高搜索结果的准确率。不过，重排模型与问题的完整度（主谓语齐全）有一些关系，通常会先走问题补全后再进行搜索-重排。重排后可以得到一个0-1的得分，代表着搜索内容与问题的相关度，该分数通常比向量的得分更加精确，可以根据得分进行过滤。
-FastGPT 会使用 RRF 对重排结果、向量搜索结果、全文检索结果进行合并，得到最终的搜索结果。
-引用上限 link每次搜索最多引用n个tokens的内容。
-之所以不采用top k，是发现在混合知识库（问答库、文档库）时，不同chunk的长度差距很大，会导致top k的结果不稳定，因此采用了tokens的方式进行引用上限的控制。
-最低相关度 link一个0-1的数值，会过滤掉一些低相关度的搜索结果。
-该值仅在语义检索或使用结果重排时生效。</description></item><item><title>高级编排介绍</title><link>/docs/workflow/intro/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/workflow/intro/</guid><description>FastGPT 从 V4 版本开始采用新的交互方式来构建 AI 应用。使用了 Flow 节点编排的方式来实现复杂工作流，提高可玩性和扩展性。但同时也提高了上手的门槛，有一定开发背景的用户使用起来会比较容易。
+FastGPT 会使用 RRF 对重排结果、向量搜索结果、全文检索结果进行合并，得到最终的搜索结果。</description></item><item><title>高级编排介绍</title><link>/docs/workflow/intro/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/workflow/intro/</guid><description>FastGPT 从 V4 版本开始采用新的交互方式来构建 AI 应用。使用了 Flow 节点编排的方式来实现复杂工作流，提高可玩性和扩展性。但同时也提高了上手的门槛，有一定开发背景的用户使用起来会比较容易。
 查看视频教程
 什么是模块？ link在程序中，模块可以理解为一个个 Function 或者接口。可以理解为它就是一个步骤。将多个模块一个个拼接起来，即可一步步的去实现最终的 AI 输出。
 如下图，这是一个最简单的 AI 对话。它由用户输入的问题、聊天记录以及 AI 对话模块组成。
@@ -75,7 +82,8 @@ key: 字段的唯一标识，不可重复！ 字段描述：描述该字段是�
 你还可以通过 JSON 传入自定义的请求头。 POST 请求中，数据会被放置在 body 中。 GET 请求中，数据会被放置在 query 中。 在出入参数中，你都可以通过 xxx.xxx 来代表嵌套的对象。 参数结构 link系统参数说明 link appId: 应用的ID chatId: 当前对话的ID，测试模式下不存在。 responseChatItemId: 当前对话中，响应的消息ID，测试模式下不存在。 variables: 当前对话的全局变量。 data: 自定义传递的参数。 嵌套对象使用 link入参 link假设我们设计了3个输入。
 user.name (string) user.age (number) type (string) 最终组成的对象为:
 { &amp;#34;user&amp;#34;: { &amp;#34;name&amp;#34;: &amp;#34;&amp;#34;, &amp;#34;age&amp;#34;: &amp;#34;&amp;#34; }, &amp;#34;type&amp;#34;: &amp;#34;&amp;#34; } 出参 link假设接口的输出结构为:
-{ &amp;#34;message&amp;#34;: &amp;#34;测试&amp;#34;, &amp;#34;data&amp;#34;:{ &amp;#34;user&amp;#34;: { &amp;#34;name&amp;#34;: &amp;#34;xxx&amp;#34;, &amp;#34;age&amp;#34;: 12 }, &amp;#34;list&amp;#34;: [ { &amp;#34;name&amp;#34;: &amp;#34;xxx&amp;#34;, &amp;#34;age&amp;#34;: 50 }, [{ &amp;#34;test&amp;#34;: 22 }] ], &amp;#34;psw&amp;#34;: &amp;#34;xxx&amp;#34; } } 最终得到的解析为:</description></item><item><title>用户问题</title><link>/docs/workflow/modules/input/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/workflow/modules/input/</guid><description>特点 link 可重复添加（防止复杂编排时线太乱，重复添加可以更美观） 无外部输入 流程入口 自动执行</description></item><item><title>知识库搜索</title><link>/docs/workflow/modules/dataset_search/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/workflow/modules/dataset_search/</guid><description>特点 link 可重复添加（复杂编排时防止线太乱，可以更美观） 有外部输入 有静态配置 触发执行 核心模块 参数说明 link输入 - 关联的知识库 link可以选择一个或多个相同向量模型的知识库，用于向量搜索。
+{ &amp;#34;message&amp;#34;: &amp;#34;测试&amp;#34;, &amp;#34;data&amp;#34;:{ &amp;#34;user&amp;#34;: { &amp;#34;name&amp;#34;: &amp;#34;xxx&amp;#34;, &amp;#34;age&amp;#34;: 12 }, &amp;#34;list&amp;#34;: [ { &amp;#34;name&amp;#34;: &amp;#34;xxx&amp;#34;, &amp;#34;age&amp;#34;: 50 }, [{ &amp;#34;test&amp;#34;: 22 }] ], &amp;#34;psw&amp;#34;: &amp;#34;xxx&amp;#34; } } 最终得到的解析为:</description></item><item><title>用户问题</title><link>/docs/workflow/modules/input/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/workflow/modules/input/</guid><description>特点 link 可重复添加（防止复杂编排时线太乱，重复添加可以更美观） 无外部输入 流程入口 自动执行</description></item><item><title>知识库搜索</title><link>/docs/workflow/modules/dataset_search/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/workflow/modules/dataset_search/</guid><description>知识库搜索具体参数说明，以及内部逻辑请移步：FastGPT知识库搜索方案
+特点 link 可重复添加（复杂编排时防止线太乱，可以更美观） 有外部输入 有静态配置 触发执行 核心模块 参数说明 link输入 - 关联的知识库 link可以选择一个或多个相同向量模型的知识库，用于向量搜索。
 输入 - 相似度 link学名称为距离，两个向量之间距离，可以认为是两个向量的相似度，又可以映射成文本之间的相似度。
 需要注意的是，不同的向量模型之间的相似度是不能比较的，因为他们的距离值计算出来差距很大。例如，openai 的 embedding 模型，通常 0.8 以上的才是较为准确的内容，而 M3E 模型则是 0.35。
 输入 - 单次搜索上限 link每次触发搜索模块时，最多取 n 条作为最终引用，又称 topN。需要注意的是，取了 n 条引用不代表对话模型都可以使用，还会受对话模型最大 Tokens 的影响。
@@ -104,7 +112,7 @@ cTime: 当前时间。例如：2023/3/3 20:22</description></item><item><title>�
 作用 link适用场景有：让大模型做判断后输出固定内容，根据大模型回复内容判断是否触发后续模块。</description></item><item><title>文本加工</title><link>/docs/workflow/modules/text_editor/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/workflow/modules/text_editor/</guid><description>特点 link 可重复添加 有外部输入 触发执行 手动配置 功能 link对输入文本进行固定加工处理，入参仅支持字符串和数字格式，入参以变量形式使用在文本编辑区域。
 根据上方示例图的处理方式，对任何输入都会在前面拼接“我的问题是：”。
 作用 link给任意模块输入自定格式文本，或处理 AI 模块系统提示词。
-示例 link 接入谷歌搜索</description></item><item><title>问题补全</title><link>/docs/workflow/modules/coreferenceresolution/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/workflow/modules/coreferenceresolution/</guid><description>特点 link 可重复添加 有外部输入 触发执行 背景 link在 RAG 中，我们需要根据输入的问题去数据库里执行 embedding 搜索，查找相关的内容，从而查找到相似的内容（简称知识库搜索）。
+示例 link 接入谷歌搜索</description></item><item><title>问题补全（已合并到知识库搜索）</title><link>/docs/workflow/modules/coreferenceresolution/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/workflow/modules/coreferenceresolution/</guid><description>特点 link 可重复添加 有外部输入 触发执行 背景 link在 RAG 中，我们需要根据输入的问题去数据库里执行 embedding 搜索，查找相关的内容，从而查找到相似的内容（简称知识库搜索）。
 在搜索的过程中，尤其是连续对话的搜索，我们通常会发现后续的问题难以搜索到合适的内容，其中一个原因是知识库搜索只会使用“当前”的问题去执行。看下面的例子：
 用户在提问“第二点是什么”的时候，只会去知识库里查找“第二点是什么”，压根查不到内容。实际上需要查询的是“QA结构是什么”。因此我们需要引入一个【问题补全】模块，来对用户当前的问题进行补全，从而使得知识库搜索能够搜索到合适的内容。使用补全后效果如下：
 功能 link调用 AI 去对用户当前的问题进行补全。目前主要是补全“指代”词，使得检索词更加的完善可靠，从而增强上下文连续对话的知识库搜索能力。
@@ -263,9 +271,7 @@ QA link{{host}} 是什么 link{{}} 代表变量， {{host}}代表一个名为 ho
 Sealos 中，你可以在下图中找到你的域名：
 如何获取 rootkey link从docker-compose.yml中的environment中获取，对应的是ROOT_KEY的值。
 sealos 中可以从上图左侧的环境变量中获取。
-如何跨版本升级！！ link建议逐一版本升级，防止脏数据。例如，当前版本是4.</description></item><item><title>V4.6.8（进行中）</title><link>/docs/development/upgrading/468/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/development/upgrading/468/</guid><description>docker 部署 - 更新 Mongo link开启 Mongo 副本集模式。需要进入 mongo 执行一次 init，参考初始化Mongo副本集，这个比较麻烦，初始化后可以用 mongoshell 之类的连接试试，看能不能连接上。
-Sealos 部署 - 无需更新 Mongo link修改配置文件 link去除了重复的模型配置，LLM模型都合并到一个属性中：点击查看最新的配置文件
-V4.6.8 更新说明 link 新增 - 知识库搜索合并模块。 优化 - LLM 模型配置，不再区分对话、分类、提取模型。同时支持模型的默认参数，避免不同模型参数冲突，可通过defaultConfig传入默认的配置。 优化 - HTTP 模块，支持输出字符串自动序列化（JSON可自动转成字符串） 优化 - 流响应，参考了ChatNextWeb的流，更加丝滑。此外，之前提到的乱码、中断，刷新后又正常了，可能会修复） 修复 - 语音输入文件无法上传。 修复 - 对话框重新生成无法使用。</description></item><item><title>V4.6.7（需要初始化）</title><link>/docs/development/upgrading/467/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/development/upgrading/467/</guid><description>1。执行初始化 API link发起 1 个 HTTP 请求 ({{rootkey}} 替换成环境变量里的 rootkey，{{host}} 替换成自己域名)
+如何跨版本升级！！ link建议逐一版本升级，防止脏数据。例如，当前版本是4.</description></item><item><title>V4.6.8（需要初始化）</title><link>/docs/development/upgrading/468/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/development/upgrading/468/</guid><description>docker 部署 - 更新 Mongo link 修改 docker-compose.yml 的mongo部分，补上command和mongodb.key mongo: image: mongo:5.0.18 # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/mongo:5.0.18 # 阿里云 container_name: mongo ports: - 27017:27017 networks: - fastgpt command: mongod --keyFile /data/mongodb.key --replSet rs0 environment: # 这里密码不用变。 - MONGO_INITDB_ROOT_USERNAME=myname - MONGO_INITDB_ROOT_PASSWORD=mypassword volumes: - ./mongo/data:/data/db - ./mongodb.key:/data/mongodb.key 创建 mongo 密钥 cd 项目目录 # 创建 mongo 密钥 openssl rand -base64 756 &amp;gt; ./mongodb.key chmod 600 ./mongodb.key # 重启 Mongo docker-compose down docker-compose up -d 进入容器初始化部分集合 docker exec -it mongo bash mongo -u myname -p mypassword --authenticationDatabase admin # 初始化副本集。如果需要外网访问，mongo:27017 可以改成 ip:27017。但是需要同时修改 FastGPT 连接的参数（MONGODB_URI=mongodb://myname:mypassword@mongo:27017/fastgpt?</description></item><item><title>V4.6.7（需要初始化）</title><link>/docs/development/upgrading/467/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/development/upgrading/467/</guid><description>1。执行初始化 API link发起 1 个 HTTP 请求 ({{rootkey}} 替换成环境变量里的 rootkey，{{host}} 替换成自己域名)
 https://xxxxx/api/admin/initv464 curl --location --request POST &amp;#39;https://{{host}}/api/admin/initv467&amp;#39; \ --header &amp;#39;rootkey: {{rootkey}}&amp;#39; \ --header &amp;#39;Content-Type: application/json&amp;#39; 初始化说明：
 将 images 重新关联到数据集 设置 pg 表的 null 值。 V4.6.7 更新说明 link 修改了知识库UI及新的导入交互方式。 优化知识库和对话的数据索引。 知识库 openAPI，支持通过 API 操作知识库。 新增 - 输入框变量提示。输入 { 号后将会获得可用变量提示。根据社区针对高级编排的反馈，我们计划于 2 月份的版本中，优化变量内容，支持模块的局部变量以及更多全局变量写入。 优化 - 切换团队后会保存记录，下次登录时优先登录该团队。 修复 - API 对话时，chatId 冲突问题。 修复 - Iframe 嵌入网页可能导致的 window.onLoad 冲突。</description></item><item><title>V4.6.6（需要改配置文件）</title><link>/docs/development/upgrading/466/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/development/upgrading/466/</guid><description>配置文件变更 link为了减少代码重复度，我们对配置文件做了一些修改：点击查看最新的配置文件
 商业版变更 link 更新商业版镜像到 4.6.6 版本。
@@ -355,7 +361,7 @@ docker run -d --name reranker -p 6006:6006 -e ACCESS_TOKEN=mytoken luanshaotong/
 # 设置安全凭证（即oneapi中的渠道密钥） 默认值：sk-aaabbbcccdddeeefffggghhhiiijjjkkk 也可以通过环境变量引入：sk-key。有关docker环境变量引入的方法请自寻教程，此处不再赘述。 接入 One API link添加一个渠道，参数如下：
 测试 linkcurl 例子：
 curl --location --request POST &amp;#39;https://domain/v1/embeddings&amp;#39; \ --header &amp;#39;Authorization: Bearer xxxx&amp;#39; \ --header &amp;#39;Content-Type: application/json&amp;#39; \ --data-raw &amp;#39;{ &amp;#34;model&amp;#34;: &amp;#34;m3e&amp;#34;, &amp;#34;input&amp;#34;: [&amp;#34;laf是什么&amp;#34;] }&amp;#39; Authorization 为 sk-key。model 为刚刚在 One API 填写的自定义模型。
-接入 FastGPT link修改 config.json 配置文件，在 VectorModels 中加入 M3E 模型：</description></item><item><title>接入 ChatGLM2-m3e 模型</title><link>/docs/development/custom-models/chatglm2-m3e/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/development/custom-models/chatglm2-m3e/</guid><description>前言 linkFastGPT 默认使用了 OpenAI 的 LLM 模型和向量模型，如果想要私有化部署的话，可以使用 ChatGLM2 和 m3e-large 模型。以下是由用户@不做了睡大觉 提供的接入方法。该镜像直接集成了 M3E-Large 和 ChatGLM2-6B 模型，可以直接使用。
+接入 FastGPT link修改 config.json 配置文件，在 vectorModels 中加入 M3E 模型：</description></item><item><title>接入 ChatGLM2-m3e 模型</title><link>/docs/development/custom-models/chatglm2-m3e/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/development/custom-models/chatglm2-m3e/</guid><description>前言 linkFastGPT 默认使用了 OpenAI 的 LLM 模型和向量模型，如果想要私有化部署的话，可以使用 ChatGLM2 和 m3e-large 模型。以下是由用户@不做了睡大觉 提供的接入方法。该镜像直接集成了 M3E-Large 和 ChatGLM2-6B 模型，可以直接使用。
 部署镜像 link 镜像名: stawky/chatglm2-m3e:latest 国内镜像名: registry.cn-hangzhou.aliyuncs.com/fastgpt_docker/chatglm2-m3e:latest 端口号: 6006 # 设置安全凭证（即oneapi中的渠道密钥）
 默认值：sk-aaabbbcccdddeeefffggghhhiiijjjkkk
 也可以通过环境变量引入：sk-key。有关docker环境变量引入的方法请自寻教程，此处不再赘述。 接入 One API link为 chatglm2 和 m3e-large 各添加一个渠道，参数如下：
